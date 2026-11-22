@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DealRoom — Live AI Lead Qualification & Mutual Deal-Locking Desk
 
-## Getting Started
+> Built for the **Nexconn Build Challenge 2026**  
+> **Live App:** https://live-deal-room.vercel.app/  
+> **Demo Video:** https://youtu.be/eJy24LVLk7w  
+> **Nexconn App Key:** `x4vkb1qpx5spk`
 
-First, run the development server:
+**DealRoom** replaces slow agency email threads and static contact forms with a single synchronized closing workspace powered by **`@nexconn/chat`** and **Gemini 2.5 Flash**. Prospective clients are qualified by an AI Scope Strategist into a structured live proposal, while the agency founder can jump in live to create or revise quotes and enforce a two-way mutual deal lock.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Key Features
+
+- **AI Scope Strategist (`Gemini 2.5 Flash`):** Answers service capability questions and parses natural-language project scope, budget, and timeline into a structured proposal card with tailored deliverables.
+- **Real-Time Multi-Party Sync (`@nexconn/chat`):** Synchronizes chat messages, AI concierge handoff summaries, live quote revisions, and deal-lock states between `client_lead` and `agency_founder`.
+- **Founder Quote Builder & Live Revision Desk:** Allows the agency founder to author a quote from scratch or adjust title, price, timeline, and deliverables live in real time.
+- **Two-Way Mutual Deal Lock & Deal Ticket (`#DR-104`):** Requires client approval (`CLIENT_APPROVED`) followed by founder countersignature (`LOCKED`), triggering a **Deal Successful** confirmation modal on both sides and a reviewable, copyable **Deal Ticket**.
+- **Editorial Design System:** Warm Cream (`#F7F4EC`) with a soft grid canvas, Deep Ink (`#14181F`), Navy (`#1B365D`) accents, `Plus Jakarta Sans`, and `JetBrains Mono`.
+
+---
+
+## Nexconn SDK (`@nexconn/chat`) Features Used
+
+- **Engine Initialization & Regional Routing (`NCEngine.initialize` & `AreaCode.SG`):** Boots the Nexconn client engine with the project App Key and Singapore region routing (`lib/nexconn.ts`).
+- **Token-Based User Authentication (`NCEngine.connect`):** Authenticates `client_lead` and `agency_founder` roles via server-issued tokens from `/api/token`.
+- **Connection & Offline Sync Lifecycle Listeners (`addConnectionStatusListener`):** Tracks live connection status in the Deal Room header and safely handles offline message sync callbacks.
+- **1:1 Direct Messaging Channels (`DirectChannel` & `DirectChannelIdentifier`):** Establishes direct peer-to-peer messaging between the client and founder.
+- **Outbound Text & Structured State Payloads (`SendTextMessageParams` & `channel.sendMessage`):** Sends live negotiation messages and serialized quote state updates (`__QUOTE_SYNC__:`) across the channel.
+- **Real-Time Inbound Handlers (`NCEngine.addMessageHandler` / `onMessageReceived`):** Streams incoming messages and remote quote updates to keep both desks synchronized.
+
+---
+
+## Project Architecture
+
+```text
+app/
+├── page.tsx                  # Role-selection landing gateway (Client Lead vs. Agency Founder)
+├── deal-room/
+│   └── page.tsx              # Split-pane live thread, proposal sheet, founder builder & Deal Ticket modals
+├── api/
+│   ├── token/route.ts        # Server-side Nexconn App Key & role token broker
+│   └── ai-qualify/route.ts   # Gemini 2.5 Flash qualification & structured proposal endpoint
+├── layout.tsx                # Root layout & Google Fonts (Plus Jakarta Sans, JetBrains Mono)
+└── globals.css               # Editorial cream-grid theme & Tailwind setup
+lib/
+└── nexconn.ts                # @nexconn/chat SDK wrapper & real-time event sync
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How to Try the Live Demo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Open [https://live-deal-room.vercel.app/](https://live-deal-room.vercel.app/) in **two side-by-side windows**.
+2. Enter as **Client Lead** in the left window and **Agency Founder** in the right window.
+3. In the **Client Lead** window, ask what services are offered or send a brief such as:  
+   `I need a custom SaaS platform, budget is $3,500, timeline is 2 weeks`
+4. Watch the structured proposal auto-generate and sync live to both windows.
+5. In the **Agency Founder** window, revise the price or deliverables and click **Push Updated Quote**.
+6. Click **Approve Quote** on the client side, then click **Confirm & Lock Deal** on the founder side to trigger the **Deal Successful** popup and inspect **Deal Ticket `#DR-104`**.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Local Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/joshuaabraham640-lgtm/live-deal-room.git
+   cd live-deal-room
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-## Deploy on Vercel
+3. **Configure environment variables:**  
+   Create a `.env.local` file in the project root:
+   ```env
+   NEXT_PUBLIC_NEXCONN_APP_KEY=your_nexconn_app_key
+   NEXCONN_TEST_TOKENS={"client_lead":"your_client_token","agency_founder":"your_founder_token"}
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view the app locally.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Tech Stack
+
+- **Framework:** Next.js (App Router) + TypeScript
+- **Styling:** Tailwind CSS + Lucide Icons
+- **Real-Time Messaging:** `@nexconn/chat` SDK
+- **AI Qualification:** Google Gemini API (`gemini-2.5-flash`)
+- **Deployment:** Vercel
