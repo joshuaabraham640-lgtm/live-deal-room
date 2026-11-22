@@ -6,11 +6,15 @@ import Link from 'next/link';
 import {
   Send,
   Check,
+  CheckCircle2,
   ArrowLeft,
   Wifi,
   WifiOff,
   Lock,
   Plus,
+  Ticket,
+  X,
+  Copy,
 } from 'lucide-react';
 import {
   connectNexconn,
@@ -90,6 +94,12 @@ function DealRoomContent() {
 
   const [quote, setQuote] = useState<QuoteData | null>(null);
 
+  // Deal locked celebration & ticket modals
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [copiedTicket, setCopiedTicket] = useState(false);
+  const hasCelebratedRef = useRef(false);
+
   // Founder builder / editor state
   const [draftTitle, setDraftTitle] = useState('Custom SaaS & Web Build');
   const [draftPrice, setDraftPrice] = useState('$2,000');
@@ -106,6 +116,16 @@ function DealRoomContent() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAiThinking]);
+
+  useEffect(() => {
+    if (quote?.status === 'LOCKED' && !hasCelebratedRef.current) {
+      hasCelebratedRef.current = true;
+      setShowSuccessModal(true);
+    }
+    if (quote && quote.status !== 'LOCKED') {
+      hasCelebratedRef.current = false;
+    }
+  }, [quote]);
 
   function hydrateFounderDraft(nextQuote: QuoteData) {
     setDraftTitle(nextQuote.projectTitle);
@@ -341,8 +361,28 @@ function DealRoomContent() {
     ]);
   }
 
+  async function handleCopyTicket() {
+    if (!quote) return;
+    const summaryText = [
+      `DEAL TICKET #DR-104 (MUTUALLY LOCKED)`,
+      `Project: ${quote.projectTitle}`,
+      `Agreed Budget: ${quote.price}`,
+      `Timeline: ${quote.timeline}`,
+      `Deliverables:`,
+      ...quote.deliverables.map((d) => `- ${d}`),
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      setCopiedTicket(true);
+      setTimeout(() => setCopiedTicket(false), 2000);
+    } catch {
+      // Ignore clipboard permission errors
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-cream-grid text-[#14181F] flex flex-col">
+    <div className="min-h-screen bg-cream-grid text-[#14181F] flex flex-col relative">
       {/* Header */}
       <header className="border-b border-[#14181F]/15 bg-[#FCFBF7]/90 px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -532,7 +572,7 @@ function DealRoomContent() {
             ) : null}
 
             {/* Founder Quote Builder / Editor */}
-            {role === 'agency_founder' && (
+            {role === 'agency_founder' && quote?.status !== 'LOCKED' && (
               <form
                 onSubmit={handleFounderCreateOrPushQuote}
                 className="pt-5 border-t border-[#14181F]/15 space-y-3"
@@ -590,12 +630,22 @@ function DealRoomContent() {
 
             {/* Approval / Lock Controls */}
             {quote && (
-              <div className="pt-4 border-t border-[#14181F]/15">
+              <div className="pt-4 border-t border-[#14181F]/15 space-y-2.5">
                 {quote.status === 'LOCKED' ? (
-                  <div className="w-full py-3 px-4 rounded-xl bg-[#1B365D] text-[#F7F4EC] text-sm font-medium flex items-center justify-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    <span>Deal Locked at {quote.price}</span>
-                  </div>
+                  <>
+                    <div className="w-full py-3 px-4 rounded-xl bg-[#1B365D] text-[#F7F4EC] text-sm font-medium flex items-center justify-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      <span>Deal Locked at {quote.price}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowTicketModal(true)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#F7F4EC] hover:bg-[#14181F]/5 border border-[#1B365D]/30 text-[#1B365D] font-medium text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Ticket className="w-4 h-4" />
+                      <span>Review Your Ticket</span>
+                    </button>
+                  </>
                 ) : role === 'client_lead' ? (
                   quote.status === 'CLIENT_APPROVED' ? (
                     <div className="w-full py-3 px-4 rounded-xl bg-[#F7F4EC] border border-[#14181F]/20 text-[#14181F]/75 text-sm text-center">
@@ -630,6 +680,149 @@ function DealRoomContent() {
           </div>
         </aside>
       </div>
+
+      {/* Deal Successful Popup Modal (Both Sides) */}
+      {showSuccessModal && quote && (
+        <div className="fixed inset-0 z-50 bg-[#14181F]/45 backdrop-blur-[2px] flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-[#FCFBF7] border border-[#14181F]/25 rounded-xl p-8 text-center space-y-6 shadow-xl">
+            <div className="mx-auto w-14 h-14 rounded-xl bg-[#1B365D] text-[#F7F4EC] flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="font-mono text-xs uppercase tracking-widest text-[#1B365D]">
+                Ticket #DR-104 · Confirmed
+              </span>
+              <h2 className="text-2xl font-bold tracking-tight text-[#14181F]">
+                Deal Successful
+              </h2>
+              <p className="text-sm text-[#14181F]/75 leading-relaxed">
+                Both parties have agreed to{' '}
+                <span className="font-semibold text-[#14181F]">
+                  {quote.projectTitle}
+                </span>{' '}
+                for{' '}
+                <span className="font-mono font-semibold text-[#1B365D]">
+                  {quote.price}
+                </span>{' '}
+                ({quote.timeline}).
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setShowTicketModal(true);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-[#1B365D] hover:bg-[#142847] text-[#F7F4EC] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Ticket className="w-4 h-4" />
+                <span>Review Your Ticket</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="py-3 px-4 rounded-xl bg-[#F7F4EC] hover:bg-[#14181F]/5 border border-[#14181F]/20 text-[#14181F] font-medium text-sm transition-colors cursor-pointer"
+              >
+                Back to Room
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Deal Ticket / Receipt Modal */}
+      {showTicketModal && quote && (
+        <div className="fixed inset-0 z-50 bg-[#14181F]/45 backdrop-blur-[2px] flex items-center justify-center p-6">
+          <div className="max-w-lg w-full bg-[#FCFBF7] border border-[#14181F]/25 rounded-xl p-6 space-y-6 shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#14181F]/15">
+              <div className="flex items-center gap-2.5">
+                <Ticket className="w-4 h-4 text-[#1B365D]" />
+                <span className="font-mono text-xs font-semibold text-[#1B365D]">
+                  DEAL TICKET #DR-104
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTicketModal(false)}
+                className="text-[#14181F]/60 hover:text-[#14181F] p-1 rounded-xl cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xl font-bold text-[#14181F]">
+                  {quote.projectTitle}
+                </h3>
+                <span className="font-mono text-[11px] px-2.5 py-1 rounded-xl bg-[#1B365D] text-[#F7F4EC]">
+                  LOCKED
+                </span>
+              </div>
+              <p className="text-sm text-[#14181F]/75 leading-relaxed">
+                {quote.summary}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[#F7F4EC] border border-[#14181F]/15">
+              <div>
+                <span className="font-mono text-[11px] text-[#14181F]/60 block">
+                  FINAL INVESTMENT
+                </span>
+                <span className="font-mono text-xl font-semibold text-[#1B365D]">
+                  {quote.price}
+                </span>
+              </div>
+              <div>
+                <span className="font-mono text-[11px] text-[#14181F]/60 block">
+                  DELIVERY WINDOW
+                </span>
+                <span className="font-mono text-xl font-semibold text-[#14181F]">
+                  {quote.timeline}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <span className="font-mono text-xs text-[#14181F]/60 block">
+                LOCKED DELIVERABLES
+              </span>
+              <ul className="space-y-2">
+                {quote.deliverables.map((item, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2.5 text-sm text-[#14181F]"
+                  >
+                    <Check className="w-4 h-4 text-[#1B365D] shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-4 border-t border-[#14181F]/15 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleCopyTicket}
+                className="py-2.5 px-4 rounded-xl bg-[#F7F4EC] hover:bg-[#14181F]/5 border border-[#14181F]/20 text-[#14181F] font-medium text-sm inline-flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Copy className="w-4 h-4" />
+                <span>{copiedTicket ? 'Copied!' : 'Copy Ticket'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTicketModal(false)}
+                className="py-2.5 px-5 rounded-xl bg-[#1B365D] hover:bg-[#142847] text-[#F7F4EC] font-semibold text-sm transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
